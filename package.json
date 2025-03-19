@@ -1,6 +1,6 @@
 {
   "name": "archery",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Build Arch packages through a web interface",
   "keywords": [
     "docker",
@@ -34,11 +34,13 @@
     "@types/express-ws": "3.0.5",
     "@types/node": "^22.10.5",
     "@types/uglify-js": "3.17.5",
-    "csso": "5.0.5",
-    "sass": "1.83.1",
-    "uglify-js": "3.19.3"
+    "forking-build-shit": "0.0.2"
   },
   "peerDependencies": {
     "typescript": "5.7.3"
+  },
+  "scripts": {
+    "build": "npx build-shit",
+    "watch": "npx build-shit --watch"
   }
 }

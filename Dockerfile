@@ -5,11 +5,11 @@ WORKDIR /build
 COPY ./package*json ./
 RUN npm ci
 COPY . .
-RUN node --experimental-strip-types build.ts && \
+RUN npm run build && \
     npm exec tsc && \
     npm ci --only=production --omit=dev
 
-FROM base as deploy
+FROM base AS deploy
 
 WORKDIR /srv/archery
 
