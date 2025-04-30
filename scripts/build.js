@@ -13,12 +13,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /**
      * Add log line to the DOM
-     * @param {string} str 
+     * @param {string[]} str 
      */
-    function appendLine(str, e = false) {
-        const p = document.createElement('p');
-        p.appendChild(document.createTextNode(str));
-        logContainer.appendChild(p);
+    function appendLines(str, e = false) {
+        str.forEach(line => {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(line));
+            logContainer.appendChild(p);
+        });
     }
 
     /**
@@ -28,6 +30,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (followLogsBtn.checked) {
             window.scrollTo(0, document.body.scrollHeight);
         }
+    }
+
+    /**
+     * Split string by newline char
+     * @param {string} str 
+     */
+    function splitLines(str) {
+        return str.split('\n').map(line => line.substring(line.lastIndexOf('\r') + 1));
     }
 
     /**
@@ -41,15 +51,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var ws = new WebSocket(new_uri);
 
         ws.onmessage = function (message) {
-            console.log('Got message: ', message);
             const buildEvent = JSON.parse(message.data);
-            
+
             if (buildEvent.type === 'finish') {
                 ws.close();
                 buildStatusTxt.replaceChild(document.createTextNode(buildEvent.message), buildStatusTxt.firstChild);
             }
             else {
-                appendLine(buildEvent.message, buildEvent.type === 'err');
+                appendLines(splitLines(buildEvent.message), buildEvent.type === 'err');
                 scrollToBottom();
             }
         }
