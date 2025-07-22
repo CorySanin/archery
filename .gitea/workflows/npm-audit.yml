@@ -1,0 +1,27 @@
+name: NPM Audit Check
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 16 * * 5'
+  
+jobs:
+
+  npm_audit:
+    name: Check NPM audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: https://github.com/actions/checkout@v4
+
+    - name: NPM Audit
+      run: npm audit
