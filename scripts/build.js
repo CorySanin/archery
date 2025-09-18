@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const logContainer = this.getElementById('logs');
     const followLogsBtn = this.getElementById('followCheckmark');
     const buildStatusTxt = this.getElementById('buildStatus');
+    let started = logContainer.childElementCount > 0;
 
     /**
      * Get the correct path to establish a ws connection
@@ -32,6 +33,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function handleScrollToggleClick() {
+        window.scrollTo(0, followLogsBtn.checked ? document.body.scrollHeight : 0);
+    }
+
     /**
      * Split string by newline char
      * @param {string} str 
@@ -53,9 +58,16 @@ document.addEventListener('DOMContentLoaded', function () {
         ws.onmessage = function (message) {
             const buildEvent = JSON.parse(message.data);
 
+            if (!started) {
+                started = true;
+                buildStatusTxt.replaceChild(document.createTextNode('running'), buildStatusTxt.firstChild);
+            }
             if (buildEvent.type === 'finish') {
                 ws.close();
                 buildStatusTxt.replaceChild(document.createTextNode(buildEvent.message), buildStatusTxt.firstChild);
+                appendLines([`finished: ${buildEvent.message}`]);
+                const cancelBtn = document.getElementById('cancelRow');
+                cancelBtn.parentElement.removeChild(cancelBtn);
             }
             else {
                 appendLines(splitLines(buildEvent.message), buildEvent.type === 'err');
@@ -66,5 +78,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
     connect();
     followLogsBtn.checked = false;
-    followLogsBtn.addEventListener('change', scrollToBottom);
+    followLogsBtn.addEventListener('change', handleScrollToggleClick);
 });
