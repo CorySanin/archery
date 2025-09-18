@@ -1,6 +1,6 @@
 {
   "name": "archery",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Build Arch packages through a web interface",
   "keywords": [
     "docker",
@@ -26,7 +26,8 @@
     "express-ws": "^5.0.2",
     "pg": "^8.15.6",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "sqids": "0.3.0"
   },
   "devDependencies": {
     "@types/csso": "5.0.4",

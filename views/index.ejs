@@ -20,7 +20,7 @@
                 </tr>
                 <% builds.forEach(build => { %>
                     <tr>
-                        <td><a href="/build/<%= build.id %>"><%= build.repo %></a></td>
+                        <td><a href="/build/<%= build.sqid %>"><%= build.repo %></a></td>
                         <td><%= build.distro %></td>
                         <td class="to-local-time"><%= build.startTime %></td>
                         <td><%= timeElapsed(build.startTime, build.endTime) %></td>

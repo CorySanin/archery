@@ -4,6 +4,7 @@ import type { Express } from "express";
 import express from 'express';
 import expressWs from "express-ws";
 import bodyParser from "body-parser";
+import Sqids from 'sqids';
 import type { DB, LogChunk } from "./DB.ts";
 import type { BuildController, BuildEvent } from "./BuildController.ts";
 
@@ -41,6 +42,10 @@ class Web {
     private port: number;
 
     constructor(options: WebConfig = {}) {
+        const sqids = new Sqids({
+            minLength: 6,
+            alphabet: 'abcdefghijkmnprstuvwxyz'
+        });
         const app: Express = express();
         const wsApp = this.app = expressWs(app).app;
         this.port = notStupidParseInt(process.env.PORT) || options['port'] as number || 8080;
@@ -66,6 +71,9 @@ class Web {
         app.get('/', async (req, res) => {
             try {
                 const builds = 'q' in req.query ? await this.db.searchBuilds(req.query.q as string) : await this.db.getBuildsBy(req.query);
+                builds.forEach(b => {
+                    b.sqid = sqids.encode([b.id]);
+                });
                 res.render('index', {
                     page: {
                         title: 'Archery',
@@ -100,22 +108,23 @@ class Web {
                 req.body.distro || 'arch',
                 req.body.dependencies || 'stable'
             );
-            res.redirect(`/build/${buildId}`);
+            res.redirect(`/build/${sqids.encode([buildId])}`);
             this.buildController.triggerBuild();
         });
 
-        app.get('/build/:num/?', async (req, res) => {
-            const build = await this.db.getBuild(parseInt(req.params.num));
+        app.get('/build/:id/?', async (req, res) => {
+            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
                 return;
             }
+            build.sqid = sqids.encode([build.id]);
             const log = splitLines(await this.db.getLog(build.id));
 
             res.render('build', {
                 page: {
                     title: 'Archery',
-                    titlesuffix: `Build #${req.params.num}`,
+                    titlesuffix: `Build #${build.id}`,
                     description: `Building ${build.repo} on ${build.distro}`
                 },
                 build,
@@ -124,8 +133,8 @@ class Web {
             });
         });
 
-        app.get('/build/:num/cancel', async (req, res) => {
-            const build = await this.db.getBuild(parseInt(req.params.num));
+        app.get('/build/:id/cancel', async (req, res) => {
+            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
                 return;
@@ -136,11 +145,11 @@ class Web {
             catch (ex) {
                 console.error(ex);
             }
-            res.redirect(`/build/${build.id}`);
+            res.redirect(`/build/${req.params.id}`);
         });
 
-        app.get('/build/:num/logs/?', async (req, res) => {
-            const build = await this.db.getBuild(parseInt(req.params.num));
+        app.get('/build/:id/logs/?', async (req, res) => {
+            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
                 return;
@@ -149,8 +158,8 @@ class Web {
             res.set('Content-Type', 'text/plain').send(log);
         });
 
-        app.get('/build/:num/patch/?', async (req, res) => {
-            const build = await this.db.getBuild(parseInt(req.params.num));
+        app.get('/build/:id/patch/?', async (req, res) => {
+            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build || !build.patch) {
                 res.sendStatus(404);
                 return;
@@ -162,10 +171,10 @@ class Web {
             res.send('Healthy');
         });
 
-        wsApp.ws('/build/:num/ws', (ws, req) => {
+        wsApp.ws('/build/:id/ws', (ws, req) => {
             console.log('WS Opened');
             const eventListener = (be: BuildEvent) => {
-                if (be.id === notStupidParseInt(req.params.num)) {
+                if (be.id === sqids.decode(req.params.id)?.[0]) {
                     ws.send(JSON.stringify(be));
                 }
             };

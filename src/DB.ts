@@ -24,6 +24,7 @@ interface Build {
     endTime?: Date;
     status: Status;
     pid?: number;
+    sqid?: string;
 }
 
 interface LogChunk {
@@ -51,7 +52,8 @@ class DB {
         this.sequelize = new Sequelize(config.db || 'archery', config.user || 'archery', process.env.PASSWORD || config.password || '', {
             host: config.host || 'localhost',
             port: config.port || 5432,
-            dialect: 'postgres'
+            dialect: 'postgres',
+            logging: false
         });
         this.build = this.sequelize.define('builds', {
             id: {

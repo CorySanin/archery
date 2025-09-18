@@ -14,7 +14,7 @@
             <div class="grid-2col">
                 <label>Repo</label> <span><%= build.repo %></span>
                 <label>Commit</label> <span><% if (build.commit) { %><%= build.commit %><% } else { %>latest<% } %></span>
-                <label>Patch</label> <span><% if (build.patch) { %><a href="/build/<%= build.id %>/patch">patch file</a><% } else { %>none<% } %></span>
+                <label>Patch</label> <span><% if (build.patch) { %><a href="/build/<%= build.sqid %>/patch">patch file</a><% } else { %>none<% } %></span>
                 <label>Distro</label> <span><%= build.distro %></span>
                 <label>Dependencies</label> <span><%= build.dependencies %></span>
                 <label>Start time</label> <span class="to-local-time"><%= build.startTime %></span>
@@ -22,10 +22,10 @@
         </div>
         <% if (!ended) { %>
         <div>
-            <a href="/build/<%= build.id %>/cancel" class="button">Cancel build</a>
+            <a href="/build/<%= build.sqid %>/cancel" class="button">Cancel build</a>
         </div>
         <% } %>
-        <p><a href="/build/<%= build.id %>/logs">Full logs</a></p>
+        <p><a href="/build/<%= build.sqid %>/logs">Full logs</a></p>
         <pre class="overflow-x"><div class="logs" id="logs"><% (log || []).forEach(line => { %><p><%= line %></p><% }) %></div></pre>
 
         <% if (!ended) { %>
