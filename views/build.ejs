@@ -20,6 +20,9 @@
                 <label>Start time</label> <span class="to-local-time"><%= build.startTime %></span>
             </div>
         </div>
+        <div>
+            <a href="/build?id=<%= build.sqid %>" class="button">Clone</a>
+        </div>
         <% if (!ended) { %>
         <div id="cancelRow">
             <a href="/build/<%= build.sqid %>/cancel" class="button">Cancel build</a>

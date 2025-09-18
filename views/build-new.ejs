@@ -10,19 +10,19 @@
     <div class="content">
         <h1>Start a build</h1>
         <form action="/build" method="post" class="grid-2col">
-            <label for="repoTxt">Repo</label> <input type="text" name="repo" id="repoTxt" required />
-            <label for="commitTxt">Commit</label> <input type="text" name="commit" id="commitTxt" />
-            <label for="patchTxt">Patch</label> <textarea name="patch" id="patchTxt"></textarea>
+            <label for="repoTxt">Repo</label> <input type="text" name="repo" id="repoTxt" required <% if (typeof query.repo === 'string') { %>value="<%= query.repo %>"<% } %> />
+            <label for="commitTxt">Commit</label> <input type="text" name="commit" id="commitTxt" <% if (typeof query.commit === 'string') { %>value="<%= query.commit %>"<% } %> />
+            <label for="patchTxt">Patch</label> <textarea name="patch" id="patchTxt"><% if (typeof query.patch === 'string') { %><%= query.patch %><% } %></textarea>
             <label for="distroTxt">Distro</label>
             <select name="distro" id="distroTxt" required>
-                <option value="arch">Arch</option>
-                <option value="artix">Artix</option>
+                <option value="arch" <% if (query.distro === 'arch') { %>selected<% } %>>Arch</option>
+                <option value="artix" <% if (query.distro === 'artix') { %>selected<% } %>>Artix</option>
             </select>
             <label for="dependsTxt">Dependencies</label>
             <select name="dependencies" id="dependsTxt" required>
-                <option value="stable">Stable</option>
-                <option value="testing">Testing</option>
-                <option value="staging">Staging</option>
+                <option value="stable" <% if (query.dependencies === 'stable') { %>selected<% } %>>Stable</option>
+                <option value="testing" <% if (query.dependencies === 'testing') { %>selected<% } %>>Testing</option>
+                <option value="staging" <% if (query.dependencies === 'staging') { %>selected<% } %>>Staging</option>
             </select>
             <div class="span-2"><button type="submit">Build</button></div>
         </form>

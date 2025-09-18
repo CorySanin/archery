@@ -90,13 +90,15 @@ class Web {
             }
         });
 
-        app.get('/build{/}', (_, res) => {
+        app.get('/build{/}', async(req, res) => {
+            const query = ('id' in req.query && typeof req.query.id === 'string' && await this.db.getBuild(sqids.decode(req.query.id)?.[0])) || req.query;
             res.render('build-new', {
                 page: {
                     title: 'Archery',
                     titlesuffix: 'New Build',
-                    description: 'Kick off a build'
-                }
+                    description: 'Kick off a build',
+                },
+                query
             });
         });
 
