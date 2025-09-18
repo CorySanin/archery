@@ -90,7 +90,7 @@ class Web {
             }
         });
 
-        app.get('/build/?', (_, res) => {
+        app.get('/build{/}', (_, res) => {
             res.render('build-new', {
                 page: {
                     title: 'Archery',
@@ -100,7 +100,7 @@ class Web {
             });
         });
 
-        app.post('/build/?', async (req, res) => {
+        app.post('/build{/}', async (req, res) => {
             const buildId = await this.db.createBuild(
                 req.body.repo,
                 req.body.commit || null,
@@ -112,7 +112,7 @@ class Web {
             this.buildController.triggerBuild();
         });
 
-        app.get('/build/:id/?', async (req, res) => {
+        app.get('/build/:id{/}', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
@@ -148,7 +148,7 @@ class Web {
             res.redirect(`/build/${req.params.id}`);
         });
 
-        app.get('/build/:id/logs/?', async (req, res) => {
+        app.get('/build/:id/logs{/}', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
@@ -158,7 +158,7 @@ class Web {
             res.set('Content-Type', 'text/plain').send(log);
         });
 
-        app.get('/build/:id/patch/?', async (req, res) => {
+        app.get('/build/:id/patch{/}', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build || !build.patch) {
                 res.sendStatus(404);
