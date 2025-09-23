@@ -4,6 +4,12 @@
         "password": "correcthorse"
     },
     "web": {
-        "port": 8080
+        "port": 8080,
+        "oidc": {
+            "server": "https://gitea.artixlinux.org/",
+            "clientId": "fakefake-fake-fake-fake-fakefakefake",
+            "clientSecret": "thisisnotarealsecret",
+            "appBaseUrl": "http://localhost:8080"
+        }
     }
 }

@@ -27,6 +27,12 @@ interface Build {
     sqid?: string;
 }
 
+interface User {
+    id: string;
+    username: string;
+    displayName?: string;
+}
+
 interface LogChunk {
     id: number
     buildId: number
@@ -46,6 +52,7 @@ const SELECT = ['id', 'repo', 'commit', 'distro', 'dependencies', 'startTime', '
 class DB {
     private build: ModelStatic<any>;
     private logChunk: ModelStatic<any>;
+    private user: ModelStatic<any>;
     private sequelize: Sequelize;
 
     constructor(config: DBConfig = {}) {
@@ -128,12 +135,40 @@ class DB {
             }
         });
 
+        this.user = this.sequelize.define('users', {
+            id: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            username: {
+                type: DataTypes.STRING,
+            },
+            displayName: {
+                type: DataTypes.STRING,
+                allowNull: true
+            }
+        });
+
         this.sync();
     }
 
     private async sync(): Promise<void> {
         await this.build.sync();
         await this.logChunk.sync();
+        await this.user.sync();
+    }
+
+    public async getUser(id: string): Promise<User> {
+        return await this.user.findByPk(id);
+    }
+
+    public async createUser(user: User): Promise<string> {
+        await this.user.create({
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName || null
+        });
+        return user.id;
     }
 
     public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string): Promise<number> {
@@ -271,4 +306,4 @@ class DB {
 
 export default DB;
 export { DB };
-export type { DBConfig, Status, Build, LogChunk };
+export type { DBConfig, Status, Build, LogChunk, User };

@@ -11,7 +11,7 @@ interface compositeConfig {
     db?: DBConfig
 }
 
-const config: compositeConfig = JSON.parse(await fs.promises.readFile(process.env.config || process.env.CONFIG || path.join('config', 'config.json'), 'utf-8'));
+const config: compositeConfig = JSON.parse(await fs.promises.readFile(process.env.config || process.env.CONFIG || path.join(process.cwd(), 'config', 'config.json'), 'utf-8'));
 
 const web = new Web(config.web);
 const buildController = new BuildController();

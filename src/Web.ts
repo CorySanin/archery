@@ -1,15 +1,33 @@
 import * as http from "http";
 import crypto from 'crypto';
-import type { Express } from "express";
+import type { Express } from 'express';
 import express from 'express';
-import expressWs from "express-ws";
-import bodyParser from "body-parser";
+import expressWs from 'express-ws';
+import session from 'express-session';
+import ky from 'ky';
+import passport from 'passport';
+import OpenIDConnectStrategy from 'passport-openidconnect';
+import bodyParser from 'body-parser';
 import Sqids from 'sqids';
-import type { DB, LogChunk } from "./DB.ts";
+import type { DB, LogChunk, Build, User } from "./DB.ts";
 import type { BuildController, BuildEvent } from "./BuildController.ts";
 
 interface WebConfig {
+    sessionSecret?: string;
     port?: number;
+    oidc?: {
+        server: string;
+        clientId: string;
+        clientSecret: string;
+        appBaseUrl: string;
+    };
+}
+
+interface OpenIdConfiguration {
+    issuer: string;
+    authorization_endpoint: string;
+    token_endpoint: string;
+    userinfo_endpoint: string;
 }
 
 /**
@@ -42,12 +60,18 @@ class Web {
     private port: number;
 
     constructor(options: WebConfig = {}) {
+        this.initialize(options)
+    }
+
+    initialize = async (options: WebConfig) => {
+        const sessionSecret = process.env['SESSIONSECRET'] || options.sessionSecret;
         const sqids = new Sqids({
             minLength: 6,
             alphabet: 'abcdefghijkmnprstuvwxyz'
         });
         const app: Express = express();
         const wsApp = this.app = expressWs(app).app;
+        const oidc = await this.initializeOIDC(options);
         this.port = notStupidParseInt(process.env.PORT) || options['port'] as number || 8080;
 
         app.set('trust proxy', 1);
@@ -68,6 +92,87 @@ class Web {
             });
         });
 
+        const showBuild = async (req: express.Request, res: express.Response, build: Build) => {
+            if (!build) {
+                res.sendStatus(404);
+                return;
+            }
+            build.sqid = sqids.encode([build.id]);
+            const log = splitLines(await this.db.getLog(build.id));
+
+            res.render('build', {
+                page: {
+                    title: 'Archery',
+                    titlesuffix: `Build #${build.id}`,
+                    description: `Building ${build.repo} on ${build.distro}`,
+                },
+                user: req?.user,
+                build,
+                log,
+                ended: build.status !== 'queued' && build.status !== 'running'
+            });
+        }
+
+        if (oidc) {
+            if (!sessionSecret) {
+                throw new Error('sessionSecret must be set.');
+            }
+            app.use(session({
+                secret: sessionSecret,
+                resave: false,
+                saveUninitialized: false
+            }));
+            passport.serializeUser(function (user: User, done) {
+                done(null, user.id);
+            });
+
+            passport.deserializeUser(async (id: string, done) => {
+                const user = await this.db.getUser(id);
+                done(null, {
+                    id: user.id,
+                    username: user.username,
+                    name: user.displayName
+                });
+            });
+            passport.use(oidc);
+            app.use(passport.initialize());
+            app.use(passport.session());
+            app.get('/login', (req, res) => {
+                if(req?.user) {
+                    return res.redirect('/');
+                }
+                res.append('X-Robots-Tag', 'none');
+                res.render('login-required', {
+                    page: {
+                        title: 'Archery',
+                        titlesuffix: 'Log In',
+                        description: 'Authentication required',
+                    }
+                });
+            });
+            app.post('/login', passport.authenticate('openidconnect'));
+            app.get('/cb', passport.authenticate('openidconnect', { failureRedirect: '/login', failureMessage: true }),
+                function (_, res) {
+                    res.redirect('/');
+                }
+            );
+            app.get('/logout', (req, res) => {
+                req.logOut((err) => {
+                    if (err) {
+                        console.error(`Failed to log out user: ${err}`);
+                    }
+                    res.redirect('/login');
+                });
+            });
+            app.use((req, res, next) => {
+                if (!req?.user) {
+                    res.redirect('/login');
+                    return;
+                }
+                next();
+            });
+        }
+
         app.get('/', async (req, res) => {
             try {
                 const builds = 'q' in req.query ? await this.db.searchBuilds(req.query.q as string) : await this.db.getBuildsBy(req.query);
@@ -80,6 +185,7 @@ class Web {
                         titlesuffix: 'Dashboard',
                         description: 'PKGBUILD central'
                     },
+                    user: req?.user,
                     builds,
                     timeElapsed
                 });
@@ -90,7 +196,7 @@ class Web {
             }
         });
 
-        app.get('/build{/}', async(req, res) => {
+        app.get('/build{/}', async (req, res) => {
             const query = ('id' in req.query && typeof req.query.id === 'string' && await this.db.getBuild(sqids.decode(req.query.id)?.[0])) || req.query;
             res.render('build-new', {
                 page: {
@@ -98,6 +204,7 @@ class Web {
                     titlesuffix: 'New Build',
                     description: 'Kick off a build',
                 },
+                user: req?.user,
                 query
             });
         });
@@ -116,23 +223,7 @@ class Web {
 
         app.get('/build/:id{/}', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
-            if (!build) {
-                res.sendStatus(404);
-                return;
-            }
-            build.sqid = sqids.encode([build.id]);
-            const log = splitLines(await this.db.getLog(build.id));
-
-            res.render('build', {
-                page: {
-                    title: 'Archery',
-                    titlesuffix: `Build #${build.id}`,
-                    description: `Building ${build.repo} on ${build.distro}`
-                },
-                build,
-                log,
-                ended: build.status !== 'queued' && build.status !== 'running'
-            });
+            showBuild(req, res, build);
         });
 
         app.get('/build/:id/cancel', async (req, res) => {
@@ -187,7 +278,6 @@ class Web {
                 this.buildController.removeListener('log', eventListener);
             });
         });
-
     }
 
     close = () => {
@@ -201,6 +291,35 @@ class Web {
         if (!this._webserver) {
             this._webserver = this.app.listen(this.port, () => console.log(`archery is running on port ${this.port}`));
         }
+    }
+
+    initializeOIDC = async (options: WebConfig): Promise<OpenIDConnectStrategy | false> => {
+        if (!options.oidc || !options.oidc.server || !options.oidc.clientId || !options.oidc.clientSecret) {
+            return false;
+        }
+        const server = options.oidc.server.endsWith('/') ? options.oidc.server : `${options.oidc.server}/`;
+        const baseUrl = options.oidc.appBaseUrl.endsWith('/') ? options.oidc.appBaseUrl : `${options.oidc.appBaseUrl}/`;
+        const openidconf = await ky.get(`${server}.well-known/openid-configuration`).json<OpenIdConfiguration>();
+        return new OpenIDConnectStrategy({
+            issuer: openidconf.issuer,
+            authorizationURL: openidconf.authorization_endpoint,
+            tokenURL: openidconf.token_endpoint,
+            userInfoURL: openidconf.userinfo_endpoint,
+            clientID: options.oidc.clientId,
+            clientSecret: options.oidc.clientSecret,
+            callbackURL: `${baseUrl}cb`
+        }, async (_: string, profile: passport.Profile, cb: OpenIDConnectStrategy.VerifyCallback) => {
+            const userObj: User = {
+                id: profile.id,
+                username: profile.username,
+                displayName: profile.displayName
+            };
+            const user = await this.db.getUser(profile.id);
+            if (!user) {
+                await this.db.createUser(userObj);
+            }
+            return cb(null, userObj);
+        });
     }
 
     setBuildController = (buildController: BuildController) => {
