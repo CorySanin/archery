@@ -190,6 +190,10 @@ input[type="submit"] {
     &.no-padding {
         padding: 0;
     }
+
+    &:has(+ .content.footer) {
+        padding-bottom: 3em;
+    }
 }
 
 .overflow-x {
@@ -231,8 +235,12 @@ input[type="submit"] {
 .content.footer {
     background: var(--primary-dark);
     color: var(--color-text);
-    margin-top: .5em;
     padding: .25em 1em;
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
 
     a {
         color: var(--color-text);
