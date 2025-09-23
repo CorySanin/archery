@@ -18,17 +18,22 @@
                 <label>Distro</label> <span><%= build.distro %></span>
                 <label>Dependencies</label> <span><%= build.dependencies %></span>
                 <label>Start time</label> <span class="to-local-time"><%= build.startTime %></span>
+                <% if (build.userId !== '-1') { %>
+                <label>Triggered by</label> <span><%= build.user.displayName %> (<%= build.user.username %>)</span>
+                <% } %>
             </div>
         </div>
+        <% if (build.sqid) { %>
         <div>
             <a href="/build?id=<%= build.sqid %>" class="button">Clone</a>
         </div>
+        <% } %>
         <% if (!ended) { %>
         <div id="cancelRow">
-            <a href="/build/<%= build.sqid %>/cancel" class="button">Cancel build</a>
+            <a href="cancel" class="button">Cancel build</a>
         </div>
         <% } %>
-        <p><a href="/build/<%= build.sqid %>/logs">Full logs</a></p>
+        <p><a href="logs">Full logs</a></p>
         <pre class="overflow-x"><div class="logs" id="logs"><% (log || []).forEach(line => { %><p><%= line %></p><% }) %></div></pre>
 
         <% if (!ended) { %>

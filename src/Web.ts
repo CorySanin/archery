@@ -215,13 +215,14 @@ class Web {
                 req.body.commit || null,
                 req.body.patch || null,
                 req.body.distro || 'arch',
-                req.body.dependencies || 'stable'
+                req.body.dependencies || 'stable',
+                req?.user?.['id']
             );
-            res.redirect(`/build/${sqids.encode([buildId])}`);
+            res.redirect(`/build/${sqids.encode([buildId])}/`);
             this.buildController.triggerBuild();
         });
 
-        app.get('/build/:id{/}', async (req, res) => {
+        app.get('/build/:id/', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             showBuild(req, res, build);
         });

@@ -149,13 +149,24 @@ class DB {
             }
         });
 
+        this.build.belongsTo(this.user);
+        this.user.hasMany(this.build);
+
         this.sync();
     }
 
     private async sync(): Promise<void> {
+        await this.user.sync();
         await this.build.sync();
         await this.logChunk.sync();
-        await this.user.sync();
+        
+        if (!(await this.getUser('-1'))) {
+            await this.createUser({
+                id: '-1',
+                username: '???',
+                displayName: 'Anonymous User'
+            });
+        }
     }
 
     public async getUser(id: string): Promise<User> {
@@ -171,13 +182,14 @@ class DB {
         return user.id;
     }
 
-    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string): Promise<number> {
+    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string): Promise<number> {
         const buildRec = await this.build.create({
             repo,
             commit: commit || null,
             patch: patch || null,
             distro,
-            dependencies
+            dependencies,
+            userId: author || '-1'
         });
         return buildRec.id;
     }
@@ -224,14 +236,17 @@ class DB {
     }
 
     public async getBuild(id: number): Promise<Build> {
-        return await this.build.findByPk(id);
+        return await this.build.findByPk(id, {
+            include: this.user
+        });
     }
 
     public async getBuilds(): Promise<Build[]> {
         return await this.build.findAll({
             attributes: SELECT,
             order: [['id', 'DESC']],
-            where: FRESH
+            where: FRESH,
+            include: this.user
         });
     }
 
@@ -242,7 +257,8 @@ class DB {
             where: {
                 ...FRESH,
                 status
-            }
+            },
+            include: this.user
         });
     }
 
@@ -253,7 +269,8 @@ class DB {
             where: {
                 ...FRESH,
                 distro
-            }
+            },
+            include: this.user
         });
     }
 
@@ -264,7 +281,8 @@ class DB {
             where: {
                 ...FRESH,
                 ...filterable
-            }
+            },
+            include: this.user
         });
     }
 
@@ -287,7 +305,8 @@ class DB {
                     { repo: { [Op.iLike]: `%${query}%` } }
                 ]
             },
-            limit: 100
+            limit: 100,
+            include: this.user
         });
     }
 

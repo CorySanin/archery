@@ -5,14 +5,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let started = logContainer.childElementCount > 0;
 
     /**
-     * Get the correct path to establish a ws connection
-     * @param {Location} loc 
-     */
-    function wsPath(loc) {
-        return loc.pathname.replace(/\/$/, '') + '/ws';
-    }
-
-    /**
      * Add log line to the DOM
      * @param {string[]} str 
      */
@@ -52,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const loc = window.location;
         let new_uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
         new_uri += "//" + loc.host;
-        new_uri += wsPath(loc);
+        new_uri += loc.pathname + 'ws';
         var ws = new WebSocket(new_uri);
 
         ws.onmessage = function (message) {
