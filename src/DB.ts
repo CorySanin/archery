@@ -25,6 +25,7 @@ interface Build {
     status: Status;
     pid?: number;
     sqid?: string;
+    uuid: string;
 }
 
 interface User {
@@ -105,6 +106,10 @@ class DB {
             pid: {
                 type: DataTypes.INTEGER,
                 allowNull: true
+            },
+            uuid: {
+                type: DataTypes.STRING,
+                unique: true
             }
         });
 
@@ -182,13 +187,14 @@ class DB {
         return user.id;
     }
 
-    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string): Promise<number> {
+    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string, uuid: string): Promise<number> {
         const buildRec = await this.build.create({
             repo,
             commit: commit || null,
             patch: patch || null,
             distro,
             dependencies,
+            uuid,
             userId: author || '-1'
         });
         return buildRec.id;
@@ -237,6 +243,15 @@ class DB {
 
     public async getBuild(id: number): Promise<Build> {
         return await this.build.findByPk(id, {
+            include: this.user
+        });
+    }
+
+    public async getBuildByUuid(uuid: string): Promise<Build> {
+        return await this.build.findOne({
+            where: {
+                uuid
+            },
             include: this.user
         });
     }

@@ -92,24 +92,70 @@ class Web {
             });
         });
 
-        const showBuild = async (req: express.Request, res: express.Response, build: Build) => {
-            if (!build) {
-                res.sendStatus(404);
-                return;
-            }
-            build.sqid = sqids.encode([build.id]);
-            const log = splitLines(await this.db.getLog(build.id));
+        const createBuildPages = (slug: string, getBuildFn: (str: string) => Promise<Build>) => {
+            app.get(`/${slug}/:id/`, async (req, res) => {
+                const build = await getBuildFn(req.params.id);
+                if (!build) {
+                    res.sendStatus(404);
+                    return;
+                }
+                build.sqid = sqids.encode([build.id]);
+                const log = splitLines(await this.db.getLog(build.id));
 
-            res.render('build', {
-                page: {
-                    title: 'Archery',
-                    titlesuffix: `Build #${build.id}`,
-                    description: `Building ${build.repo} on ${build.distro}`,
-                },
-                user: req?.user,
-                build,
-                log,
-                ended: build.status !== 'queued' && build.status !== 'running'
+                if (req?.user) {
+                    res.locals.shareable = `${req.protocol}://${req.host}/b/${build.uuid}/`;
+                }
+
+                res.render('build', {
+                    page: {
+                        title: 'Archery',
+                        titlesuffix: `Build #${build.id}`,
+                        description: `Building ${build.repo} on ${build.distro}`,
+                    },
+                    user: req?.user,
+                    build,
+                    log,
+                    ended: build.status !== 'queued' && build.status !== 'running',
+                    public: !!oidc && !req?.user
+                });
+            });
+
+            app.get(`/${slug}/:id/logs{/}`, async (req, res) => {
+                const build = await getBuildFn(req.params.id);
+                if (!build) {
+                    res.sendStatus(404);
+                    return;
+                }
+                const log = (await this.db.getLog(build.id)).map(logChunk => logChunk.chunk).join('\n');
+                res.set('Content-Type', 'text/plain').send(log);
+            });
+
+            app.get(`/${slug}/:id/patch{/}`, async (req, res) => {
+                const build = await getBuildFn(req.params.id);
+                if (!build || !build.patch) {
+                    res.sendStatus(404);
+                    return;
+                }
+                res.set('Content-Type', 'text/plain').send(build.patch);
+            });
+
+            wsApp.ws(`/${slug}/:id/ws`, async (ws, req) => {
+                const build = await getBuildFn(req.params.id);
+                if (! build || (build.status !== 'queued' && build.status !== 'running')) {
+                    return ws.close();
+                }
+                console.log('WS Opened');
+                const eventListener = (be: BuildEvent) => {
+                    if (be.id === build.id) {
+                        ws.send(JSON.stringify(be));
+                    }
+                };
+                this.buildController.on('log', eventListener);
+
+                ws.on('close', () => {
+                    console.log('WS Closed');
+                    this.buildController.removeListener('log', eventListener);
+                });
             });
         }
 
@@ -138,7 +184,7 @@ class Web {
             app.use(passport.initialize());
             app.use(passport.session());
             app.get('/login', (req, res) => {
-                if(req?.user) {
+                if (req?.user) {
                     return res.redirect('/');
                 }
                 res.append('X-Robots-Tag', 'none');
@@ -164,6 +210,7 @@ class Web {
                     res.redirect('/login');
                 });
             });
+            createBuildPages('b', (id) => this.db.getBuildByUuid(id));
             app.use((req, res, next) => {
                 if (!req?.user) {
                     res.redirect('/login');
@@ -216,16 +263,14 @@ class Web {
                 req.body.patch || null,
                 req.body.distro || 'arch',
                 req.body.dependencies || 'stable',
-                req?.user?.['id']
+                req?.user?.['id'],
+                crypto.randomUUID()
             );
             res.redirect(`/build/${sqids.encode([buildId])}/`);
             this.buildController.triggerBuild();
         });
 
-        app.get('/build/:id/', async (req, res) => {
-            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
-            showBuild(req, res, build);
-        });
+        createBuildPages('build', (id) => this.db.getBuild(sqids.decode(id)?.[0]));
 
         app.get('/build/:id/cancel', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
@@ -239,45 +284,11 @@ class Web {
             catch (ex) {
                 console.error(ex);
             }
-            res.redirect(`/build/${req.params.id}`);
-        });
-
-        app.get('/build/:id/logs{/}', async (req, res) => {
-            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
-            if (!build) {
-                res.sendStatus(404);
-                return;
-            }
-            const log = (await this.db.getLog(build.id)).map(logChunk => logChunk.chunk).join('\n');
-            res.set('Content-Type', 'text/plain').send(log);
-        });
-
-        app.get('/build/:id/patch{/}', async (req, res) => {
-            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
-            if (!build || !build.patch) {
-                res.sendStatus(404);
-                return;
-            }
-            res.set('Content-Type', 'text/plain').send(build.patch);
+            res.redirect(`/build/${req.params.id}/`);
         });
 
         app.get('/healthcheck', (_, res) => {
             res.send('Healthy');
-        });
-
-        wsApp.ws('/build/:id/ws', (ws, req) => {
-            console.log('WS Opened');
-            const eventListener = (be: BuildEvent) => {
-                if (be.id === sqids.decode(req.params.id)?.[0]) {
-                    ws.send(JSON.stringify(be));
-                }
-            };
-            this.buildController.on('log', eventListener);
-
-            ws.on('close', () => {
-                console.log('WS Closed');
-                this.buildController.removeListener('log', eventListener);
-            });
         });
     }
 

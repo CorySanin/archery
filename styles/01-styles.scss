@@ -118,6 +118,15 @@ input[type="submit"] {
     }
 }
 
+span,
+a {
+
+    &:has(+ button.copybtn) {
+        float: left;
+        margin-right: .75em;
+    }
+}
+
 
 .sidebar {
     background: var(--primary);
