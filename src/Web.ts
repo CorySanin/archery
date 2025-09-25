@@ -15,6 +15,7 @@ import type { BuildController, BuildEvent } from "./BuildController.ts";
 interface WebConfig {
     sessionSecret?: string;
     port?: number;
+    secure?: boolean;
     oidc?: {
         server: string;
         clientId: string;
@@ -58,12 +59,14 @@ class Web {
     private buildController: BuildController;
     private app: expressWs.Application;
     private port: number;
+    private options:WebConfig;
 
     constructor(options: WebConfig = {}) {
-        this.initialize(options)
+        this.options = options;
     }
 
-    initialize = async (options: WebConfig) => {
+    initialize = async () => {
+        const options = this.options;
         const sessionSecret = process.env['SESSIONSECRET'] || options.sessionSecret;
         const sqids = new Sqids({
             minLength: 6,
@@ -141,7 +144,7 @@ class Web {
 
             wsApp.ws(`/${slug}/:id/ws`, async (ws, req) => {
                 const build = await getBuildFn(req.params.id);
-                if (! build || (build.status !== 'queued' && build.status !== 'running')) {
+                if (!build || (build.status !== 'queued' && build.status !== 'running')) {
                     return ws.close();
                 }
                 console.log('WS Opened');
@@ -159,15 +162,29 @@ class Web {
             });
         }
 
+        app.get('/healthcheck', (_, res) => {
+            res.send('Healthy');
+        });
+
         if (oidc) {
             if (!sessionSecret) {
                 throw new Error('sessionSecret must be set.');
             }
             app.use(session({
+                name: 'sessionId',
                 secret: sessionSecret,
-                resave: false,
-                saveUninitialized: false
+                resave: true,
+                saveUninitialized: false,
+                store: this.db,
+                cookie: {
+                    maxAge: notStupidParseInt(process.env['COOKIETTL']) || 1000 * 60 * 60 * 24 * 30, // 30 days
+                    httpOnly: true,
+                    secure: !!options.secure
+                }
             }));
+            passport.use(oidc);
+            app.use(passport.initialize());
+            app.use(passport.session());
             passport.serializeUser(function (user: User, done) {
                 done(null, user.id);
             });
@@ -177,12 +194,9 @@ class Web {
                 done(null, {
                     id: user.id,
                     username: user.username,
-                    name: user.displayName
+                    displayName: user.displayName
                 });
             });
-            passport.use(oidc);
-            app.use(passport.initialize());
-            app.use(passport.session());
             app.get('/login', (req, res) => {
                 if (req?.user) {
                     return res.redirect('/');
@@ -197,11 +211,7 @@ class Web {
                 });
             });
             app.post('/login', passport.authenticate('openidconnect'));
-            app.get('/cb', passport.authenticate('openidconnect', { failureRedirect: '/login', failureMessage: true }),
-                function (_, res) {
-                    res.redirect('/');
-                }
-            );
+            app.get('/cb', passport.authenticate('openidconnect', { successRedirect: '/', failureRedirect: '/login', failureMessage: true }));
             app.get('/logout', (req, res) => {
                 req.logOut((err) => {
                     if (err) {
@@ -287,9 +297,7 @@ class Web {
             res.redirect(`/build/${req.params.id}/`);
         });
 
-        app.get('/healthcheck', (_, res) => {
-            res.send('Healthy');
-        });
+        this._webserver = this.app.listen(this.port, () => console.log(`archery is running on port ${this.port}`));
     }
 
     close = () => {
@@ -300,9 +308,6 @@ class Web {
 
     setDB = (db: DB) => {
         this.db = db;
-        if (!this._webserver) {
-            this._webserver = this.app.listen(this.port, () => console.log(`archery is running on port ${this.port}`));
-        }
     }
 
     initializeOIDC = async (options: WebConfig): Promise<OpenIDConnectStrategy | false> => {
@@ -340,5 +345,5 @@ class Web {
 }
 
 export default Web;
-export { Web };
+export { Web, notStupidParseInt };
 export type { WebConfig };

@@ -1,9 +1,13 @@
 import { Sequelize, DataTypes, Op, } from 'sequelize';
+import { Store } from 'express-session'
+import { notStupidParseInt } from './Web.ts';
 import type { ModelStatic, Filterable } from 'sequelize';
 import type { LogType } from './BuildController.ts';
+import type { SessionData } from 'express-session'
 
 type Status = 'queued' | 'running' | 'cancelled' | 'success' | 'error';
 type Dependencies = 'stable' | 'testing' | 'staging';
+type Callback = (err?: unknown, data?: any) => any
 
 interface DBConfig {
     db?: string;
@@ -41,7 +45,7 @@ interface LogChunk {
     chunk: string
 }
 
-const MONTH = 1000 * 60 * 60 * 24 * 24;
+const MONTH = 1000 * 60 * 60 * 24 * 30;
 const FRESH = {
     [Op.or]: [
         { startTime: { [Op.gt]: new Date(Date.now() - MONTH) } },
@@ -50,13 +54,27 @@ const FRESH = {
 }
 const SELECT = ['id', 'repo', 'commit', 'distro', 'dependencies', 'startTime', 'endTime', 'status'];
 
-class DB {
+function handleCallback<T>(err: unknown, data: T, cb?: Callback): T {
+    if (cb) {
+        cb(err, data);
+    }
+    if (err) {
+        throw err;
+    }
+    return data;
+}
+
+class DB extends Store {
     private build: ModelStatic<any>;
     private logChunk: ModelStatic<any>;
     private user: ModelStatic<any>;
+    private session: ModelStatic<any>;
     private sequelize: Sequelize;
+    private ttl: number;
 
     constructor(config: DBConfig = {}) {
+        super();
+        this.ttl = notStupidParseInt(process.env['COOKIETTL']) || 1000 * 60 * 60 * 24 * 30;
         this.sequelize = new Sequelize(config.db || 'archery', config.user || 'archery', process.env.PASSWORD || config.password || '', {
             host: config.host || 'localhost',
             port: config.port || 5432,
@@ -154,6 +172,16 @@ class DB {
             }
         });
 
+        this.session = this.sequelize.define('session', {
+            sid: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            sessionData: {
+                type: DataTypes.JSONB,
+            }
+        });
+
         this.build.belongsTo(this.user);
         this.user.hasMany(this.build);
 
@@ -164,7 +192,8 @@ class DB {
         await this.user.sync();
         await this.build.sync();
         await this.logChunk.sync();
-        
+        await this.session.sync();
+
         if (!(await this.getUser('-1'))) {
             await this.createUser({
                 id: '-1',
@@ -329,8 +358,117 @@ class DB {
         await this.build.destroy({
             where: {
                 startTime: { [Op.lt]: new Date(Date.now() - MONTH * 6) }
-            }
+            },
+            force: true
         });
+        await this.session.destroy({
+            where: {
+                updatedAt: { [Op.lt]: new Date(Date.now() - this.ttl) }
+            },
+            force: true
+        });
+    }
+
+    public getTTL(sessionData: SessionData) {
+        if (sessionData?.cookie?.expires) {
+            const ms = Number(new Date(sessionData.cookie.expires)) - Date.now();
+            return ms;
+        }
+        else {
+            return this.ttl;
+        }
+    }
+
+    public async set(sid: string, sessionData: SessionData, cb?: Callback): Promise<void> {
+        const ttl = this.getTTL(sessionData);
+        try {
+            if (ttl > 0) {
+                await this.session.upsert({
+                    sid,
+                    sessionData
+                });
+                handleCallback(null, null, cb);
+                return;
+            }
+            await this.destroy(sid, cb);
+        }
+        catch (err) {
+            return handleCallback(err, null, cb);
+        }
+    }
+
+    public async get(sid: string, cb?: Callback): Promise<SessionData> {
+        try {
+            return handleCallback(null, ((await this.session.findByPk(sid))?.sessionData) as SessionData || null, cb);
+        }
+        catch (err) {
+            return handleCallback(err, null, cb);
+        }
+    }
+
+    public async destroy(sid: string, cb?: Callback): Promise<void> {
+        try {
+            await this.session.destroy({
+                where: {
+                    sid
+                },
+                force: true
+            });
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async clear(cb?: Callback): Promise<void> {
+        try {
+            await this.session.destroy({
+                truncate: true,
+                force: true
+            });
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async length(cb?: Callback): Promise<number> {
+        try {
+            return handleCallback(null, await this.session.count(), cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async touch(sid: string, sessionData: SessionData, cb?: Callback): Promise<void> {
+        try {
+            await this.session.update({},
+                {
+                    where: {
+                        sid
+                    }
+                }
+            );
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async all(cb?: Callback): Promise<SessionData[]> {
+        try {
+            const all = await this.session.findAll({
+                attributes: ['sessionData']
+            });
+            return handleCallback(null, all.map(row => row.sessionData as SessionData), cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
     }
 
     public async close(): Promise<void> {

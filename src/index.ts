@@ -19,6 +19,7 @@ await new Promise((resolve) => setTimeout(resolve, 1500));
 const db = new DB(config.db);
 web.setDB(db);
 web.setBuildController(buildController);
+web.initialize();
 buildController.setDB(db);
 
 process.on('SIGTERM', () => {
