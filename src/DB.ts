@@ -1,9 +1,13 @@
 import { Sequelize, DataTypes, Op, } from 'sequelize';
+import { Store } from 'express-session'
+import { notStupidParseInt } from './Web.ts';
 import type { ModelStatic, Filterable } from 'sequelize';
 import type { LogType } from './BuildController.ts';
+import type { SessionData } from 'express-session'
 
 type Status = 'queued' | 'running' | 'cancelled' | 'success' | 'error';
 type Dependencies = 'stable' | 'testing' | 'staging';
+type Callback = (err?: unknown, data?: any) => any
 
 interface DBConfig {
     db?: string;
@@ -25,6 +29,13 @@ interface Build {
     status: Status;
     pid?: number;
     sqid?: string;
+    uuid: string;
+}
+
+interface User {
+    id: string;
+    username: string;
+    displayName?: string;
 }
 
 interface LogChunk {
@@ -34,7 +45,7 @@ interface LogChunk {
     chunk: string
 }
 
-const MONTH = 1000 * 60 * 60 * 24 * 24;
+const MONTH = 1000 * 60 * 60 * 24 * 30;
 const FRESH = {
     [Op.or]: [
         { startTime: { [Op.gt]: new Date(Date.now() - MONTH) } },
@@ -43,12 +54,27 @@ const FRESH = {
 }
 const SELECT = ['id', 'repo', 'commit', 'distro', 'dependencies', 'startTime', 'endTime', 'status'];
 
-class DB {
+function handleCallback<T>(err: unknown, data: T, cb?: Callback): T {
+    if (cb) {
+        cb(err, data);
+    }
+    if (err) {
+        throw err;
+    }
+    return data;
+}
+
+class DB extends Store {
     private build: ModelStatic<any>;
     private logChunk: ModelStatic<any>;
+    private user: ModelStatic<any>;
+    private session: ModelStatic<any>;
     private sequelize: Sequelize;
+    private ttl: number;
 
     constructor(config: DBConfig = {}) {
+        super();
+        this.ttl = notStupidParseInt(process.env['COOKIETTL']) || 1000 * 60 * 60 * 24 * 30;
         this.sequelize = new Sequelize(config.db || 'archery', config.user || 'archery', process.env.PASSWORD || config.password || '', {
             host: config.host || 'localhost',
             port: config.port || 5432,
@@ -98,6 +124,10 @@ class DB {
             pid: {
                 type: DataTypes.INTEGER,
                 allowNull: true
+            },
+            uuid: {
+                type: DataTypes.STRING,
+                unique: true
             }
         });
 
@@ -128,21 +158,73 @@ class DB {
             }
         });
 
+        this.user = this.sequelize.define('users', {
+            id: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            username: {
+                type: DataTypes.STRING,
+            },
+            displayName: {
+                type: DataTypes.STRING,
+                allowNull: true
+            }
+        });
+
+        this.session = this.sequelize.define('session', {
+            sid: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            sessionData: {
+                type: DataTypes.JSONB,
+            }
+        });
+
+        this.build.belongsTo(this.user);
+        this.user.hasMany(this.build);
+
         this.sync();
     }
 
     private async sync(): Promise<void> {
+        await this.user.sync();
         await this.build.sync();
         await this.logChunk.sync();
+        await this.session.sync();
+
+        if (!(await this.getUser('-1'))) {
+            await this.createUser({
+                id: '-1',
+                username: '???',
+                displayName: 'Anonymous User'
+            });
+        }
     }
 
-    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string): Promise<number> {
+    public async getUser(id: string): Promise<User> {
+        return await this.user.findByPk(id);
+    }
+
+    public async createUser(user: User): Promise<string> {
+        await this.user.create({
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName || null
+        });
+        return user.id;
+    }
+
+    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string, uuid: string): Promise<number> {
         const buildRec = await this.build.create({
             repo,
             commit: commit || null,
             patch: patch || null,
             distro,
-            dependencies
+            dependencies,
+            uuid,
+            userId: author || '-1'
         });
         return buildRec.id;
     }
@@ -189,14 +271,26 @@ class DB {
     }
 
     public async getBuild(id: number): Promise<Build> {
-        return await this.build.findByPk(id);
+        return await this.build.findByPk(id, {
+            include: this.user
+        });
+    }
+
+    public async getBuildByUuid(uuid: string): Promise<Build> {
+        return await this.build.findOne({
+            where: {
+                uuid
+            },
+            include: this.user
+        });
     }
 
     public async getBuilds(): Promise<Build[]> {
         return await this.build.findAll({
             attributes: SELECT,
             order: [['id', 'DESC']],
-            where: FRESH
+            where: FRESH,
+            include: this.user
         });
     }
 
@@ -207,7 +301,8 @@ class DB {
             where: {
                 ...FRESH,
                 status
-            }
+            },
+            include: this.user
         });
     }
 
@@ -218,7 +313,8 @@ class DB {
             where: {
                 ...FRESH,
                 distro
-            }
+            },
+            include: this.user
         });
     }
 
@@ -229,7 +325,8 @@ class DB {
             where: {
                 ...FRESH,
                 ...filterable
-            }
+            },
+            include: this.user
         });
     }
 
@@ -252,7 +349,8 @@ class DB {
                     { repo: { [Op.iLike]: `%${query}%` } }
                 ]
             },
-            limit: 100
+            limit: 100,
+            include: this.user
         });
     }
 
@@ -260,8 +358,117 @@ class DB {
         await this.build.destroy({
             where: {
                 startTime: { [Op.lt]: new Date(Date.now() - MONTH * 6) }
-            }
+            },
+            force: true
         });
+        await this.session.destroy({
+            where: {
+                updatedAt: { [Op.lt]: new Date(Date.now() - this.ttl) }
+            },
+            force: true
+        });
+    }
+
+    public getTTL(sessionData: SessionData) {
+        if (sessionData?.cookie?.expires) {
+            const ms = Number(new Date(sessionData.cookie.expires)) - Date.now();
+            return ms;
+        }
+        else {
+            return this.ttl;
+        }
+    }
+
+    public async set(sid: string, sessionData: SessionData, cb?: Callback): Promise<void> {
+        const ttl = this.getTTL(sessionData);
+        try {
+            if (ttl > 0) {
+                await this.session.upsert({
+                    sid,
+                    sessionData
+                });
+                handleCallback(null, null, cb);
+                return;
+            }
+            await this.destroy(sid, cb);
+        }
+        catch (err) {
+            return handleCallback(err, null, cb);
+        }
+    }
+
+    public async get(sid: string, cb?: Callback): Promise<SessionData> {
+        try {
+            return handleCallback(null, ((await this.session.findByPk(sid))?.sessionData) as SessionData || null, cb);
+        }
+        catch (err) {
+            return handleCallback(err, null, cb);
+        }
+    }
+
+    public async destroy(sid: string, cb?: Callback): Promise<void> {
+        try {
+            await this.session.destroy({
+                where: {
+                    sid
+                },
+                force: true
+            });
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async clear(cb?: Callback): Promise<void> {
+        try {
+            await this.session.destroy({
+                truncate: true,
+                force: true
+            });
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async length(cb?: Callback): Promise<number> {
+        try {
+            return handleCallback(null, await this.session.count(), cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async touch(sid: string, sessionData: SessionData, cb?: Callback): Promise<void> {
+        try {
+            await this.session.update({},
+                {
+                    where: {
+                        sid
+                    }
+                }
+            );
+            handleCallback(null, null, cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
+    }
+
+    public async all(cb?: Callback): Promise<SessionData[]> {
+        try {
+            const all = await this.session.findAll({
+                attributes: ['sessionData']
+            });
+            return handleCallback(null, all.map(row => row.sessionData as SessionData), cb);
+        }
+        catch (err) {
+            handleCallback(err, null, cb);
+        }
     }
 
     public async close(): Promise<void> {
@@ -271,4 +478,4 @@ class DB {
 
 export default DB;
 export { DB };
-export type { DBConfig, Status, Build, LogChunk };
+export type { DBConfig, Status, Build, LogChunk, User };
