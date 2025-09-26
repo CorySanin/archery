@@ -216,6 +216,15 @@ class DB extends Store {
         return user.id;
     }
 
+    public async upsertUser(user: User): Promise<string> {
+        await this.user.upsert({
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName || null
+        });
+        return user.id;
+    }
+
     public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string, uuid: string): Promise<number> {
         const buildRec = await this.build.create({
             repo,

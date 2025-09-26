@@ -331,10 +331,7 @@ class Web {
                 username: profile.username,
                 displayName: profile.displayName
             };
-            const user = await this.db.getUser(profile.id);
-            if (!user) {
-                await this.db.createUser(userObj);
-            }
+            await this.db.upsertUser(userObj);
             return cb(null, userObj);
         });
     }
