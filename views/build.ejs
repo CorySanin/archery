@@ -31,7 +31,7 @@
             <a href="/build?id=<%= build.sqid %>" class="button">Clone</a>
         </div>
         <% } %>
-        <% if (!ended) { %>
+        <% if (!ended && !public) { %>
         <div id="cancelRow">
             <a href="cancel" class="button">Cancel build</a>
         </div>
