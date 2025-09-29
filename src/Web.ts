@@ -324,7 +324,8 @@ class Web {
             userInfoURL: openidconf.userinfo_endpoint,
             clientID: options.oidc.clientId,
             clientSecret: options.oidc.clientSecret,
-            callbackURL: `${baseUrl}cb`
+            callbackURL: `${baseUrl}cb`,
+            scope: 'profile'
         }, async (_: string, profile: passport.Profile, cb: OpenIDConnectStrategy.VerifyCallback) => {
             const userObj: User = {
                 id: profile.id,
