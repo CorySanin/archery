@@ -34,8 +34,9 @@ changeDir() {
     fi
 }
 
-# Clone the git repo
-git clone "$REPO" /home/user/pkg && \
+if [ ! -d "/home/user/pkg" ]; then
+    git clone "$REPO" /home/user/pkg || exit $?
+fi
 cd /home/user/pkg && \
 checkoutCommit && \
 applyPatch && \
