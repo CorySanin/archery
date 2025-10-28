@@ -41,8 +41,10 @@ if [ ! -d "$DIR" ]; then
 fi
 cd "$DIR" && \
 touch archery && \
+ls -al && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
-makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive
+makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive && \
+ls -al
 exit $?;
