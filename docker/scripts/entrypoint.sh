@@ -27,6 +27,12 @@ applyPatch() {
     fi
 }
 
+postEntrypoint() {
+    if [ -n "$POST" ] && [ -x post-entrypoint.sh ] ; then
+        ./post-entrypoint.sh
+    fi
+}
+
 changeDir() {
     if [ -n "$CD" ]
     then
@@ -41,10 +47,9 @@ if [ ! -d "$DIR" ]; then
 fi
 cd "$DIR" && \
 touch archery && \
-ls -al && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
 makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive && \
-ls -al
+postEntrypoint
 exit $?;
