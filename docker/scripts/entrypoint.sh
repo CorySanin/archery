@@ -40,6 +40,7 @@ if [ ! -d "$DIR" ]; then
     git clone "$REPO" "$DIR" || exit $?
 fi
 cd "$DIR" && \
+touch archery && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
