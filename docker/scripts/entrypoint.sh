@@ -34,10 +34,12 @@ changeDir() {
     fi
 }
 
-if [ ! -d "/home/user/pkg" ]; then
-    git clone "$REPO" /home/user/pkg || exit $?
+DIR="${WORKSPACE:-/home/user/pkg}"
+
+if [ ! -d "$DIR" ]; then
+    git clone "$REPO" "$DIR" || exit $?
 fi
-cd /home/user/pkg && \
+cd "$DIR" && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
