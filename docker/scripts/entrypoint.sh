@@ -28,7 +28,9 @@ applyPatch() {
 }
 
 postEntrypoint() {
+    ls -al
     if [ -n "$POST" ] && [ -x post-entrypoint.sh ] ; then
+        echo "EXECUTING POSTENTRY"
         ./post-entrypoint.sh
     fi
 }
