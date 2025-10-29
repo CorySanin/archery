@@ -31,9 +31,6 @@ postEntrypoint() {
     if [ -n "$POST" ] && [ -x "./post-entrypoint.sh" ] ; then
         echo "EXECUTING POSTENTRY"
         ./post-entrypoint.sh
-    else
-        echo "POST: $POST"
-        ls -al
     fi
 }
 
@@ -50,10 +47,9 @@ if [ ! -d "$DIR" ]; then
     git clone "$REPO" "$DIR" || exit $?
 fi
 cd "$DIR" && \
-touch archery && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
-makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive && \
+makepkg -smf --noconfirm --noprogressbar --skippgpcheck && \
 postEntrypoint
 exit $?;
