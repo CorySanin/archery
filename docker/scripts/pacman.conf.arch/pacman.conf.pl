@@ -1,3 +1,12 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+my $dep = $ENV{DEP} // 'stable';
+my $tier = $ENV{TIER} // '1';
+
+#region header
+print <<'EOHEADER';
 #
 # /etc/pacman.conf
 #
@@ -12,33 +21,61 @@ DownloadUser = alpm
 SigLevel    = Required DatabaseOptional
 LocalFileSigLevel = Optional
 
-[system-goblins]
+EOHEADER
+#endregion
+
+#region core
+if ($dep eq 'staging') {
+    print <<'EOCORESTAGING';
+[core-staging]
 Include = /etc/pacman.d/mirrorlist
 
-[system-gremlins]
+EOCORESTAGING
+}
+
+if ($dep eq 'staging' || $dep eq 'testing') {
+    print <<'EOCORETESTING';
+[core-testing]
 Include = /etc/pacman.d/mirrorlist
 
-[system]
+EOCORETESTING
+}
+
+print <<'EOCORE';
+[core]
 Include = /etc/pacman.d/mirrorlist
 
-[world-goblins]
+EOCORE
+#endregion
+
+#region extra
+if ($tier ne '0') {
+    if ($dep eq 'staging') {
+        print <<'EOEXTRASTAGING';
+[extra-staging]
 Include = /etc/pacman.d/mirrorlist
 
-[world-gremlins]
+EOEXTRASTAGING
+    }
+
+    if ($dep eq 'staging' || $dep eq 'testing') {
+        print <<'EOEXTRATESTING';
+[extra-testing]
 Include = /etc/pacman.d/mirrorlist
 
-[world]
+EOEXTRATESTING
+    }
+
+    print <<'EOEXTRA';
+[extra]
 Include = /etc/pacman.d/mirrorlist
 
-[galaxy-goblins]
-Include = /etc/pacman.d/mirrorlist
+EOEXTRA
+}
+#endregion
 
-[galaxy-gremlins]
-Include = /etc/pacman.d/mirrorlist
-
-[galaxy]
-Include = /etc/pacman.d/mirrorlist
-
+#region options
+print <<'EOOPTIONS';
 [options]
 NoExtract  = usr/share/help/* !usr/share/help/en* !usr/share/help/C/*
 NoExtract  = usr/share/gtk-doc/html/* usr/share/doc/*
@@ -51,3 +88,6 @@ NoExtract   = !usr/share/X11/locale/compose.dir !usr/share/X11/locale/iso8859-1/
 NoExtract  = !usr/share/*locales/C !usr/share/*locales/POSIX !usr/share/i18n/charmaps/ANSI_X3.4-1968.gz
 NoExtract  = usr/share/man/* usr/share/info/*
 NoExtract  = usr/share/vim/vim*/lang/*
+NoExtract  = etc/pacman.conf etc/pacman.d/mirrorlist
+EOOPTIONS
+#endregion

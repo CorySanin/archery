@@ -1,15 +1,13 @@
 #!/bin/sh
 
-if [ -n "$DEP" ] && [ "$DEP" != "stable" ]
-then
-    sudo cp "/scripts/pacman.conf/pacman.$DEP.conf" "/etc/pacman.conf" && \
-    sudo pacman -Syu --noconfirm --noprogressbar
-fi
+/scripts/pacman.conf.pl | sudo tee "/etc/pacman.conf" > /dev/null
 
 if [ -z "$REPO" ]
 then
     /bin/bash
     exit $?;
+else
+    sudo pacman -Syu --noconfirm --noprogressbar
 fi
 
 checkoutCommit() {
@@ -34,6 +32,14 @@ postEntrypoint() {
     fi
 }
 
+doBuild() {
+    if [ -n "$POST" ] && [ -x "./post-entrypoint.sh" ] ; then
+        makepkg -smf --noconfirm --noprogressbar --skippgpcheck
+    else
+        makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive
+    fi
+}
+
 changeDir() {
     if [ -n "$CD" ]
     then
@@ -50,6 +56,6 @@ cd "$DIR" && \
 checkoutCommit && \
 applyPatch && \
 sudo pacman -Syu --noconfirm --noprogressbar &&\
-makepkg -smf --noconfirm --noprogressbar --skippgpcheck && \
+doBuild && \
 postEntrypoint
 exit $?;
