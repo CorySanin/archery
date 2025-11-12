@@ -15,6 +15,11 @@ interface BuildEvent {
     message: any;
 }
 
+interface ControllerConfig {
+    "arch-mirror"?: string;
+    "artix-mirror"?: string;
+}
+
 function getContainerName(id: number) {
     return `archery-build-${id}`;
 }
@@ -24,9 +29,11 @@ class BuildController extends EventEmitter {
     private running: boolean = false;
     private interval: NodeJS.Timeout;
     private cancelled: boolean = false;
+    private config: ControllerConfig;
 
-    constructor(config = {}) {
+    constructor(config: ControllerConfig = {}) {
         super();
+        this.config = config;
         // this.interval = setInterval(this.triggerBuild, 60000);
     }
 
@@ -129,6 +136,7 @@ class BuildController extends EventEmitter {
     }
 
     private createBuildParams = (build: Build) => {
+        const customMirror = this.config?.[`${build.distro}-mirror`];
         const params = ['run', '--rm', '-e', `REPO=${build.repo}`];
         if (build.dependencies) {
             params.push('-e', `DEP=${build.dependencies}`);
@@ -138,6 +146,9 @@ class BuildController extends EventEmitter {
         }
         if (build.patch) {
             params.push('-e', `PATCH=${build.patch}`);
+        }
+        if (customMirror && typeof customMirror === 'string' && customMirror.length > 0) {
+            params.push('-e', `MIRROR=${customMirror}`);
         }
         params.push('--name', getContainerName(build.id));
         params.push(docker_images[build.distro]);
@@ -188,4 +199,4 @@ class BuildController extends EventEmitter {
 
 export default BuildController;
 export { BuildController };
-export type { BuildEvent, LogType };
+export type { BuildEvent, LogType, ControllerConfig };

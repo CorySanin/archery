@@ -2,6 +2,12 @@
 
 /scripts/pacman.conf.pl | sudo tee "/etc/pacman.conf" > /dev/null
 
+if [ -n "$MIRROR" ]
+then
+    sudo sed -i "1iServer = $MIRROR" /etc/pacman.d/mirrorlist
+fi
+
+
 if [ -z "$REPO" ]
 then
     /bin/bash

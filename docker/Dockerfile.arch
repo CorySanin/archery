@@ -3,12 +3,14 @@ FROM archlinux/archlinux:base-devel
 COPY scripts/entrypoint.sh /scripts/entrypoint.sh
 COPY scripts/pacman.conf.arch/pacman.conf.pl /scripts/pacman.conf.pl
 
-ARG MIRROR=https://mirror.sanin.dev/arch-linux/\$repo/os/\$arch
+ARG BUILDMIRROR=https://mirror.sanin.dev/arch-linux/\$repo/os/\$arch
 
-RUN sed -i "1iServer = $MIRROR" /etc/pacman.d/mirrorlist && \
+RUN cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak && \
+  sed -i "1iServer = $BUILDMIRROR" /etc/pacman.d/mirrorlist && \
   pacman -Syu --noconfirm git clang sudo devtools vim bash-completion && \
   pacman -Scc --noconfirm && \
   rm -rf /var/lib/pacman/sync /var/cache/pacman/pkg && \
+  mv /etc/pacman.d/mirrorlist.bak /etc/pacman.d/mirrorlist && \
   git config --global init.defaultBranch "master" && \
   chmod +x /scripts/* && \
   useradd -m user && \
