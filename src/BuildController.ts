@@ -91,7 +91,7 @@ class BuildController extends EventEmitter {
     }
 
     private build = async (build: Build) => {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve, _) => {
             const docker = spawn.spawn('docker', this.createBuildParams(build));
             docker.on('spawn', () => {
                 const remainder = {
