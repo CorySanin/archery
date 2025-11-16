@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 my $dep = $ENV{DEP} // 'stable';
-my $tier = $ENV{TIER} // '1';
+my $tier = $ENV{TIER} // '2';
 
 #region header
 print <<'EOHEADER';
