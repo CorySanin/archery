@@ -1,31 +1,31 @@
 {
   "name": "archery",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Build Arch packages through a web interface",
   "keywords": [
     "docker",
     "arch",
     "artix"
   ],
-  "homepage": "https://github.com/CorySanin/archery#readme",
+  "homepage": "https://git.sanin.dev/corysanin/archery#readme",
   "bugs": {
     "url": "https://github.com/CorySanin/archery/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CorySanin/archery.git"
+    "url": "git+https://git.sanin.dev/corysanin/archery.git"
   },
   "license": "MIT",
   "author": "Cory Sanin",
   "type": "module",
   "main": "index.ts",
   "dependencies": {
-    "body-parser": "^2.2.0",
+    "body-parser": "^2.2.1",
     "ejs": "3.1.10",
     "express": "^5.1.0",
     "express-session": "1.18.2",
     "express-ws": "^5.0.2",
-    "ky": "1.10.0",
+    "ky": "1.14.0",
     "passport": "0.7.0",
     "passport-openidconnect": "0.1.2",
     "pg": "^8.16.3",
@@ -34,9 +34,9 @@
     "sqids": "0.3.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.5",
     "@types/express-session": "^1.18.2",
-    "@types/express-ws": "3.0.5",
+    "@types/express-ws": "3.0.6",
     "@types/node": "^24.10.1",
     "@types/passport": "1.0.17",
     "@types/passport-openidconnect": "0.1.3",

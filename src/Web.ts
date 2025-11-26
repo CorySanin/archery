@@ -297,6 +297,17 @@ class Web {
             res.redirect(`/build/${req.params.id}/`);
         });
 
+        app.post('/build/:id/persist', async (req, res) => {
+            const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
+            const persist = !! req?.body?.persist;
+            if (!build) {
+                res.sendStatus(404);
+                return;
+            }
+            await this.db.persist(build.id, persist);
+            res.sendStatus(200);
+        })
+
         this._webserver = this.app.listen(this.port, () => console.log(`archery is running on port ${this.port}`));
     }
 

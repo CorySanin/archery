@@ -10,6 +10,9 @@
     <div class="content">
         <h1>Build #<%= build.id %></h1>
         <h2 id="buildStatus"><%= build.status %></h2>
+        <% if (!public) { %>
+        <h3 id="sqid" class="display-none"><%= build.sqid %></h3>
+        <% } %>
         <div class="overflow-x">
             <div class="grid-2col">
                 <label>Repo</label> <span><span><%= build.repo %></span> <button class="copybtn">Copy</button></span>
@@ -20,6 +23,9 @@
                 <label>Start time</label> <span class="to-local-time"><%= build.startTime %></span>
                 <% if (build.userId && build.userId !== '-1') { %>
                 <label>Triggered by</label> <span><%= build.user.displayName %> (<%= build.user.username %>)</span>
+                <% } %>
+                <% if (!public) { %>
+                <label>Persist</label> <span><input id="persistChk" type="checkbox" <% if (build.persist) { %>checked<% } %>/></span>
                 <% } %>
                 <% if (locals.shareable) { %>
                 <label>Shareable link</label> <span><a href="<%= shareable %>"><%= shareable %></a> <button class="copybtn">Copy</button></span>
@@ -47,7 +53,7 @@
     </div>
     <%- include("footer", locals) %>
     <script src="/assets/js/timezone.js?v1" nonce="<%= cspNonce %>"></script>
-    <script src="/assets/js/copy.js?v1" nonce="<%= cspNonce %>"></script>
+    <script src="/assets/js/form.js?v1" nonce="<%= cspNonce %>"></script>
     <% if (!ended) { %>
     <script src="/assets/js/build.js?v3" nonce="<%= cspNonce %>"></script>
     <% } %>

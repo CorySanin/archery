@@ -30,6 +30,7 @@ interface Build {
     pid?: number;
     sqid?: string;
     uuid: string;
+    persist: boolean;
 }
 
 interface User {
@@ -128,6 +129,10 @@ class DB extends Store {
             uuid: {
                 type: DataTypes.STRING,
                 unique: true
+            },
+            persist: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false
             }
         });
 
@@ -262,6 +267,16 @@ class DB extends Store {
         });
     }
 
+    public async persist(id: number, persist: boolean = true): Promise<void> {
+        await this.build.update({
+            persist
+        }, {
+            where: {
+                id
+            }
+        });
+    }
+
     public async appendLog(buildId: number, type: LogType, chunk: string): Promise<void> {
         await this.logChunk.create({
             buildId,
@@ -366,7 +381,8 @@ class DB extends Store {
     public async cleanup(): Promise<void> {
         await this.build.destroy({
             where: {
-                startTime: { [Op.lt]: new Date(Date.now() - MONTH * 6) }
+                startTime: { [Op.lt]: new Date(Date.now() - MONTH * 6) },
+                persist: { [Op.eq]: false }
             },
             force: true
         });
