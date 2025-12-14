@@ -22,7 +22,7 @@
   "dependencies": {
     "body-parser": "^2.2.1",
     "ejs": "3.1.10",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "express-session": "1.18.2",
     "express-ws": "^5.0.2",
     "ky": "1.14.0",
