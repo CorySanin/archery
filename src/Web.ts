@@ -53,13 +53,20 @@ function splitLines(lines: LogChunk[]) {
     return lines.map(logChunk => logChunk.chunk.split('\n')).flat().map(line => line.substring(line.lastIndexOf('\r') + 1));
 }
 
+function resolvePackageRepo(repo: string) {
+    if (/^[a-zA-Z]+:\/\//.test(repo) || repo.toLowerCase().endsWith('.git')) {
+        return repo;
+    }
+    return `https://gitlab.archlinux.org/archlinux/packaging/packages/${repo}.git`;
+}
+
 class Web {
     private _webserver: http.Server | null = null;
     private db: DB;
     private buildController: BuildController;
     private app: expressWs.Application;
     private port: number;
-    private options:WebConfig;
+    private options: WebConfig;
 
     constructor(options: WebConfig = {}) {
         this.options = options;
@@ -268,7 +275,7 @@ class Web {
 
         app.post('/build{/}', async (req, res) => {
             const buildId = await this.db.createBuild(
-                req.body.repo,
+                resolvePackageRepo(req.body.repo),
                 req.body.commit || null,
                 req.body.patch || null,
                 req.body.distro || 'arch',
@@ -299,7 +306,7 @@ class Web {
 
         app.post('/build/:id/persist', async (req, res) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
-            const persist = !! req?.body?.persist;
+            const persist = !!req?.body?.persist;
             if (!build) {
                 res.sendStatus(404);
                 return;
