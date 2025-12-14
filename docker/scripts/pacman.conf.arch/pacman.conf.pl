@@ -18,6 +18,7 @@ NoProgressBar
 VerbosePkgLists
 ParallelDownloads = 5
 DownloadUser = alpm
+DisableSandbox
 SigLevel    = Required DatabaseOptional
 LocalFileSigLevel = Optional
 
