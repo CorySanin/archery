@@ -1,6 +1,6 @@
 {
   "name": "archery",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Build Arch packages through a web interface",
   "keywords": [
     "docker",
@@ -20,12 +20,12 @@
   "type": "module",
   "main": "index.ts",
   "dependencies": {
-    "body-parser": "^2.2.1",
+    "body-parser": "^2.2.2",
     "ejs": "3.1.10",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "express-session": "1.18.2",
     "express-ws": "^5.0.2",
-    "ky": "1.14.0",
+    "ky": "1.14.2",
     "passport": "0.7.0",
     "passport-openidconnect": "0.1.2",
     "pg": "^8.16.3",
@@ -34,7 +34,7 @@
     "sqids": "0.3.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.5",
+    "@types/express": "5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/express-ws": "3.0.6",
     "@types/node": "^24.10.1",
