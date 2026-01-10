@@ -39,10 +39,11 @@ postEntrypoint() {
 }
 
 doBuild() {
+    FL="${FLAGS:--smf}"
     if [ -n "$POST" ] && [ -x "./post-entrypoint.sh" ] ; then
-        makepkg -smf --noconfirm --noprogressbar --skippgpcheck
+        makepkg $FL --noconfirm --noprogressbar --skippgpcheck
     else
-        makepkg -smf --noconfirm --noprogressbar --skippgpcheck --noarchive
+        makepkg $FL --noconfirm --noprogressbar --skippgpcheck --noarchive
     fi
 }
 
