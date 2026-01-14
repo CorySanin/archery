@@ -2,12 +2,12 @@ FROM node:lts-alpine AS base
 FROM base AS build-env
 
 WORKDIR /build
-COPY ./package*json ./
-RUN npm ci
+RUN --mount=target=/build/package.json,source=package.json --mount=target=/build/package-lock.json,source=package-lock.json \
+    npm ci
 COPY . .
 RUN npm run build && \
     npm exec tsc && \
-    npm ci --only=production --omit=dev
+    npm ci --omit=dev
 
 FROM base AS deploy
 
