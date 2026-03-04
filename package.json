@@ -1,6 +1,6 @@
 {
   "name": "archery",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Build Arch packages through a web interface",
   "keywords": [
     "docker",
