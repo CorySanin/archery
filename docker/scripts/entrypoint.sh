@@ -41,6 +41,7 @@ postEntrypoint() {
 doBuild() {
     export SOURCE_DATE_EPOCH=$(date +%s)
     FL="${FLAGS:--smf}"
+    echo "makepkg $FL"
     if [ -n "$POST" ] && [ -x "./post-entrypoint.sh" ] ; then
         makepkg $FL --noconfirm --noprogressbar --skippgpcheck
     else
