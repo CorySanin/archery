@@ -42,6 +42,7 @@ doBuild() {
     export SOURCE_DATE_EPOCH=$(date +%s)
     FL="${FLAGS:--smf}"
     echo "makepkg $FL"
+    echo "  MAKEPKGFLAGS=$MAKEPKGFLAGS"
     if [ -n "$POST" ] && [ -x "./post-entrypoint.sh" ] ; then
         makepkg $FL --noconfirm --noprogressbar --skippgpcheck
     else
@@ -61,6 +62,7 @@ DIR="${WORKSPACE:-/home/user/pkg}"
 if [ ! -d "$DIR" ]; then
     git clone "$REPO" "$DIR" || exit $?
 fi
+echo "MAKEPKGFLAGS=$MAKEPKGFLAGS"
 cd "$DIR" && \
 checkoutCommit && \
 applyPatch && \
