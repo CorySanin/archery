@@ -5,10 +5,11 @@
 echo "REPO=$REPO"
 echo "DEP=$DEP"
 echo "TIER=$TIER"
-echo "POST=$POST"
 echo "FLAGS=$FLAGS"
 echo "username=$username"
 echo "MAKEPKGFLAGS=$MAKEPKGFLAGS"
+echo "BUILDDIR=$BUILDDIR"
+echo "WORKSPACE=$WORKSPACE"
 
 if [ -n "$MIRROR" ]
 then
