@@ -2,15 +2,6 @@
 
 /scripts/pacman.conf.pl | sudo tee "/etc/pacman.conf" > /dev/null
 
-echo "REPO=$REPO"
-echo "DEP=$DEP"
-echo "TIER=$TIER"
-echo "FLAGS=$FLAGS"
-echo "username=$username"
-echo "MAKEPKGFLAGS=$MAKEPKGFLAGS"
-echo "BUILDDIR=$BUILDDIR"
-echo "WORKSPACE=$WORKSPACE"
-
 if [ -n "$MIRROR" ]
 then
     sudo sed -i "1iServer = $MIRROR" /etc/pacman.d/mirrorlist
