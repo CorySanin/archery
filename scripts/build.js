@@ -72,3 +72,11 @@ document.addEventListener('DOMContentLoaded', function () {
     followLogsBtn.checked = false;
     followLogsBtn.addEventListener('change', handleScrollToggleClick);
 });
+
+window['cancel'] = async function() {
+    const resp = await fetch(`${window.location.pathname}cancel`, {
+        method: 'POST'
+    });
+    setTimeout(location.reload, 3000);
+    return resp.ok;
+}

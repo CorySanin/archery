@@ -155,7 +155,7 @@ class BuildController extends EventEmitter {
         return params;
     }
 
-    cancelBuild = async (id: number) => {
+    cancelBuild = async (id: number, force: boolean = false) => {
         const running = this.running;
         const build = await this.db.getBuild(id);
         if (running && build.status === 'queued') {
@@ -178,6 +178,9 @@ class BuildController extends EventEmitter {
                 const dockerKill = spawn.spawn('docker', ['stop', output.trim()]);
                 dockerKill.on('close', (code) => {
                     if (code > 0) {
+                        if (force) {
+                            this.db.finishBuild(id, 'cancelled');
+                        }
                         return reject('failed to kill container');
                     }
                     resolve();

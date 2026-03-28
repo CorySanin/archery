@@ -289,19 +289,27 @@ class Web {
 
         createBuildPages('build', (id) => this.db.getBuild(sqids.decode(id)?.[0]));
 
-        app.get('/build/:id/cancel', async (req, res) => {
+        const cancelBuild = async (req: express.Request<{id: string}>, res: express.Response, force: boolean = false) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);
                 return;
             }
             try {
-                await this.buildController.cancelBuild(build.id);
+                await this.buildController.cancelBuild(build.id, force);
             }
             catch (ex) {
                 console.error(ex);
             }
             res.redirect(`/build/${req.params.id}/`);
+        }
+
+        app.get('/build/:id/cancel', (req, res) => {
+            cancelBuild(req, res);
+        });
+
+        app.post('/build/:id/cancel', async (req, res) => {
+            cancelBuild(req, res, true);
         });
 
         app.post('/build/:id/persist', async (req, res) => {
