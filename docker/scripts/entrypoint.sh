@@ -12,7 +12,7 @@ if [ -z "$REPO" ]
 then
     /bin/bash
     exit $?;
-else
+elif [ -z "$SKIPUPGRADE" ]
     sudo pacman -Syu --noconfirm --noprogressbar
 fi
 
