@@ -13,6 +13,7 @@ then
     /bin/bash
     exit $?;
 elif [ -z "$SKIPUPGRADE" ]
+then
     sudo pacman -Syu --noconfirm --noprogressbar
 fi
 
