@@ -355,7 +355,7 @@ class Web {
         }, async (_: string, profile: passport.Profile, cb: OpenIDConnectStrategy.VerifyCallback) => {
             const userObj: User = {
                 id: profile.id,
-                username: profile.username,
+                username: profile.username!,
                 displayName: profile.displayName
             };
             await this.db.upsertUser(userObj);
