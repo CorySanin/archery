@@ -53,7 +53,9 @@
     <script src="/assets/js/timezone.js?v1" nonce="<%= cspNonce %>"></script>
     <script src="/assets/js/form.js?v1" nonce="<%= cspNonce %>"></script>
     <% if (!ended) { %>
-    <script src="/assets/js/build.js?v4" nonce="<%= cspNonce %>"></script>
+    <script src="/assets/js/build.js?v5" nonce="<%= cspNonce %>"></script>
+    <% } else { %>
+    <script src="/assets/js/build.basic.js?v5" nonce="<%= cspNonce %>"></script>
     <% } %>
 </body>
 </html>
