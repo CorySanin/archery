@@ -12,6 +12,14 @@ import Sqids from 'sqids';
 import type { DB, LogChunk, Build, User } from "./DB.ts";
 import type { BuildController, BuildEvent } from "./BuildController.ts";
 
+type ArcheryUser = User;
+
+declare global {
+    namespace Express {
+        interface User extends ArcheryUser {}
+    }
+}
+
 interface WebConfig {
     sessionSecret?: string;
     port?: number;
@@ -70,6 +78,10 @@ class Web {
 
     constructor(options: WebConfig = {}) {
         this.options = options;
+        this.port = -1;
+        this.app = null!;
+        this.buildController = null!;
+        this.db = null!;
     }
 
     initialize = async () => {
@@ -150,7 +162,7 @@ class Web {
             });
 
             wsApp.ws(`/${slug}/:id/ws`, async (ws, req) => {
-                const build = await getBuildFn(req.params.id);
+                const build = typeof req.params.id === 'string' ? await getBuildFn(req.params.id) : null;
                 if (!build || (build.status !== 'queued' && build.status !== 'running')) {
                     return ws.close();
                 }

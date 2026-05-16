@@ -230,7 +230,7 @@ class DB extends Store {
         return user.id;
     }
 
-    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string, uuid: string): Promise<number> {
+    public async createBuild(repo: string, commit: string, patch: string, distro: string, dependencies: string, author: string | undefined, uuid: string): Promise<number> {
         const buildRec = await this.build.create({
             repo,
             commit: commit || null,
@@ -418,7 +418,7 @@ class DB extends Store {
             await this.destroy(sid, cb);
         }
         catch (err) {
-            return handleCallback(err, null, cb);
+            handleCallback(err, null, cb);
         }
     }
 
@@ -427,7 +427,7 @@ class DB extends Store {
             return handleCallback(null, ((await this.session.findByPk(sid))?.sessionData) as SessionData || null, cb);
         }
         catch (err) {
-            return handleCallback(err, null, cb);
+            return handleCallback(err, null!, cb);
         }
     }
 
@@ -464,11 +464,11 @@ class DB extends Store {
             return handleCallback(null, await this.session.count(), cb);
         }
         catch (err) {
-            handleCallback(err, null, cb);
+            return handleCallback(err, -1, cb);
         }
     }
 
-    public async touch(sid: string, sessionData: SessionData, cb?: Callback): Promise<void> {
+    public async touch(sid: string, _: SessionData, cb?: Callback): Promise<void> {
         try {
             await this.session.update({},
                 {
@@ -492,7 +492,7 @@ class DB extends Store {
             return handleCallback(null, all.map(row => row.sessionData as SessionData), cb);
         }
         catch (err) {
-            handleCallback(err, null, cb);
+            return handleCallback(err, null!, cb);
         }
     }
 

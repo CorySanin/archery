@@ -34,6 +34,8 @@ class BuildController extends EventEmitter {
     constructor(config: ControllerConfig = {}) {
         super();
         this.config = config;
+        this.db = null!;
+        this.interval = null!;
         // this.interval = setInterval(this.triggerBuild, 60000);
     }
 
