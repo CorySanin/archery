@@ -14,7 +14,7 @@ on:
 jobs:
   build_app_image:
     name: Build app image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-big
     env:
       DH_REGISTRY: docker.io
       REPOSITORY: ${{ github.event.repository.name }}

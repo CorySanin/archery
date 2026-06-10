@@ -12,7 +12,7 @@ jobs:
 
   npm_audit:
     name: Check NPM audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-little
     timeout-minutes: 20
     strategy:
       fail-fast: true
