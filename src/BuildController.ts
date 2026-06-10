@@ -2,20 +2,22 @@ import spawn from 'child_process';
 import EventEmitter from 'events';
 import type { Build, DB } from "./DB.ts";
 
-const docker_images = {
+export type Distro = 'arch' | 'artix';
+
+const docker_images: Record<Distro, string>  = {
     arch: 'corysanin/archery:arch',
     artix: 'corysanin/archery:artix',
 }
 
-type LogType = 'std' | 'err' | 'finish';
+export type LogType = 'std' | 'err' | 'finish';
 
-interface BuildEvent {
+export interface BuildEvent {
     id: number;
     type: LogType;
     message: any;
 }
 
-interface ControllerConfig {
+export interface ControllerConfig {
     "arch-mirror"?: string;
     "artix-mirror"?: string;
 }
@@ -24,7 +26,7 @@ function getContainerName(id: number) {
     return `archery-build-${id}`;
 }
 
-class BuildController extends EventEmitter {
+export class BuildController extends EventEmitter {
     private db: DB;
     private running: boolean = false;
     private interval: NodeJS.Timeout;
@@ -67,9 +69,9 @@ class BuildController extends EventEmitter {
         this.kickOffBuild();
     }
 
-    private pullImage = (distro: string) => {
+    private pullImage = (distro: Distro) => {
         return new Promise<void>((resolve, reject) => {
-            if (!(distro in docker_images)) {
+            if (!(distro in docker_images) || typeof docker_images[distro] !== 'string') {
                 return reject();
             }
             const docker = spawn.spawn('docker', ['pull', docker_images[distro]]);
@@ -96,11 +98,12 @@ class BuildController extends EventEmitter {
         return new Promise<void>((resolve, _) => {
             const docker = spawn.spawn('docker', this.createBuildParams(build));
             docker.on('spawn', () => {
-                const remainder = {
+                const remainder: Record<LogType, string> = {
                     std: '',
-                    err: ''
+                    err: '',
+                    finish: ''
                 }
-                this.db.startBuild(build.id, docker.pid);
+                docker.pid && this.db.startBuild(build.id, docker.pid);
 
                 let createLogFunction = (type: LogType) => {
                     return (data: Buffer | string) => {
@@ -173,13 +176,13 @@ class BuildController extends EventEmitter {
                 });
             });
             dockerPs.on('close', (code) => {
-                if (code > 0) {
+                if (code == null || code > 0) {
                     return reject('failed to get container id');
                 }
                 this.cancelled = true;
                 const dockerKill = spawn.spawn('docker', ['stop', output.trim()]);
                 dockerKill.on('close', (code) => {
-                    if (code > 0) {
+                    if (code == null || code > 0) {
                         if (force) {
                             this.db.finishBuild(id, 'cancelled');
                         }
@@ -203,5 +206,3 @@ class BuildController extends EventEmitter {
 }
 
 export default BuildController;
-export { BuildController };
-export type { BuildEvent, LogType, ControllerConfig };

@@ -4,6 +4,7 @@ import { notStupidParseInt } from './Web.ts';
 import type { ModelStatic, Filterable } from 'sequelize';
 import type { LogType } from './BuildController.ts';
 import type { SessionData } from 'express-session'
+import type { Distro } from './BuildController.ts';
 
 type Status = 'queued' | 'running' | 'cancelled' | 'success' | 'error';
 type Dependencies = 'stable' | 'testing' | 'staging';
@@ -22,7 +23,7 @@ interface Build {
     repo: string;
     commit?: string;
     patch?: string;
-    distro: string;
+    distro: Distro;
     dependencies: Dependencies;
     startTime?: Date;
     endTime?: Date;
