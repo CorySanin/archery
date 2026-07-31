@@ -2,7 +2,6 @@ import * as http from "http";
 import crypto from 'crypto';
 import type { Express } from 'express';
 import express from 'express';
-import expressWs from 'express-ws';
 import session from 'express-session';
 import ky from 'ky';
 import passport from 'passport';
@@ -16,7 +15,7 @@ type ArcheryUser = User;
 
 declare global {
     namespace Express {
-        interface User extends ArcheryUser {}
+        interface User extends ArcheryUser { }
     }
 }
 
@@ -72,7 +71,7 @@ class Web {
     private _webserver: http.Server | null = null;
     private db: DB;
     private buildController: BuildController;
-    private app: expressWs.Application;
+    private app: Express;
     private port: number;
     private options: WebConfig;
 
@@ -91,8 +90,7 @@ class Web {
             minLength: 6,
             alphabet: 'abcdefghijkmnprstuvwxyz'
         });
-        const app: Express = express();
-        const wsApp = this.app = expressWs(app).app;
+        const app: Express = this.app = express();
         const oidc = await this.initializeOIDC(options);
         this.port = notStupidParseInt(process.env.PORT) || options['port'] as number || 8080;
 
@@ -161,22 +159,27 @@ class Web {
                 res.set('Content-Type', 'text/plain').send(build.patch);
             });
 
-            wsApp.ws(`/${slug}/:id/ws`, async (ws, req) => {
+            app.get(`/${slug}/:id/sse`, async (req, res) => {
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+
                 const build = typeof req.params.id === 'string' ? await getBuildFn(req.params.id) : null;
                 if (!build || (build.status !== 'queued' && build.status !== 'running')) {
-                    return ws.close();
+                    return res.end();
                 }
-                console.log('WS Opened');
+                console.log('event-stream opened');
                 const eventListener = (be: BuildEvent) => {
                     if (be.id === build.id) {
-                        ws.send(JSON.stringify(be));
+                        res.write(`data:${JSON.stringify(be)}\n\n`);
                     }
                 };
                 this.buildController.on('log', eventListener);
 
-                ws.on('close', () => {
-                    console.log('WS Closed');
+                req.on('close', () => {
                     this.buildController.removeListener('log', eventListener);
+                    res.end();
+                    console.log('event-stream closed');
                 });
             });
         }
@@ -301,7 +304,7 @@ class Web {
 
         createBuildPages('build', (id) => this.db.getBuild(sqids.decode(id)?.[0]));
 
-        const cancelBuild = async (req: express.Request<{id: string}>, res: express.Response, force: boolean = false) => {
+        const cancelBuild = async (req: express.Request<{ id: string }>, res: express.Response, force: boolean = false) => {
             const build = await this.db.getBuild(sqids.decode(req.params.id)?.[0]);
             if (!build) {
                 res.sendStatus(404);

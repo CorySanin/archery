@@ -38,16 +38,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Establish websocket connection
+     * Establish event stream connection
      */
     function connect() {
         const loc = window.location;
-        let new_uri = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-        new_uri += "//" + loc.host;
-        new_uri += loc.pathname + 'ws';
-        var ws = new WebSocket(new_uri);
+        const new_uri = `${loc.protocol}//${loc.host}${loc.pathname}sse`;
+        const eventSource = new EventSource(new_uri);
 
-        ws.onmessage = function (message) {
+        eventSource.addEventListener('message', message => {
             const buildEvent = JSON.parse(message.data);
 
             if (!started) {
@@ -55,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 buildStatusTxt.replaceChild(document.createTextNode('running'), buildStatusTxt.firstChild);
             }
             if (buildEvent.type === 'finish') {
-                ws.close();
+                eventSource.close();
                 buildStatusTxt.replaceChild(document.createTextNode(buildEvent.message), buildStatusTxt.firstChild);
                 appendLines([`finished: ${buildEvent.message}`]);
                 const cancelBtn = document.getElementById('cancelRow');
@@ -65,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 appendLines(splitLines(buildEvent.message), buildEvent.type === 'err');
                 scrollToBottom();
             }
-        }
+        });
     }
 
     connect();
@@ -73,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     followLogsBtn.addEventListener('change', handleScrollToggleClick);
 });
 
-window['cancel'] = async function() {
+window['cancel'] = async function () {
     const resp = await fetch(`${window.location.pathname}cancel`, {
         method: 'POST'
     });
